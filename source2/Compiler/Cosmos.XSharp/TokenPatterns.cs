@@ -150,8 +150,7 @@ namespace Cosmos.Compiler.XSharp {
     /// <summary>Builds a label at function level having the given name.</summary>
     /// <param name="aLabel">Local label name at function level.</param>
     /// <returns>The label name</returns>
-    protected string FuncLabel(string aLabel)
-    {
+    protected string FuncLabel(string aLabel) {
       return GetNamespace() + "_" + mFuncName + "_" + aLabel;
     }
 
@@ -177,10 +176,12 @@ namespace Cosmos.Compiler.XSharp {
           return xValue.Substring(1);
         }
         return GroupLabel(xValue);
-      } else {
+      }
+      else {
         if (xValue.StartsWith("..")) {
           return xValue.Substring(2);
-        } else if (xValue.StartsWith(".")) {
+        }
+        else if (xValue.StartsWith(".")) {
           return GroupLabel(xValue.Substring(1));
         }
         return FuncLabel(xValue);
@@ -190,9 +191,8 @@ namespace Cosmos.Compiler.XSharp {
     /// <summary>Get a flag that tell if we are in a function body or not. This is used by the
     /// assembler generator when end of source file is reached to make sure the last function
     /// or interrupt handler is properly closed (see issue #15666)</summary>
-    internal bool InFunctionBody
-    {
-        get { return !string.IsNullOrEmpty(mFuncName); }
+    internal bool InFunctionBody {
+      get { return !string.IsNullOrEmpty(mFuncName); }
     }
 
     /// <summary>Start a new function having the given name. The current blocks collection is
@@ -202,7 +202,7 @@ namespace Cosmos.Compiler.XSharp {
     protected void StartFunc(string aName) {
       if (InFunctionBody) {
         throw new Exception(
-            "Found a function/interrupt handler definition embedded inside another function/interrupt handler.");
+          "Found a function/interrupt handler definition embedded inside another function/interrupt handler.");
       }
       mFuncName = aName;
       mFuncExitFound = false;
@@ -219,14 +219,14 @@ namespace Cosmos.Compiler.XSharp {
       if (null == mFuncName) {
         throw new Exception("Found a closing curly brace that doesn't match an opening curly brace.");
       }
-      if (!mFuncExitFound)
-      {
-        aAsm += GetNamespace() + "_" + mFuncName + "_Exit:";
+      if (!mFuncExitFound) {
+        aAsm.EmitExitLabel(GetNamespace(), mFuncName);
       }
       if (mInIntHandler) {
-        aAsm += "IRet";
-      } else {
-        aAsm += "Ret";
+        aAsm.IRet();
+      }
+      else {
+        aAsm.Ret();
       }
       mFuncName = null;
     }
@@ -283,19 +283,23 @@ namespace Cosmos.Compiler.XSharp {
         rIdx += 1;
         return xToken1;
 
-      } else if (xToken1.Type == TokenType.AlphaNum) {
+      }
+      else if (xToken1.Type == TokenType.AlphaNum) {
         rIdx += 1;
         return "[" + GetLabel(xToken1) + "]";
 
-      } else if (xToken1.Type == TokenType.ValueInt) {
+      }
+      else if (xToken1.Type == TokenType.ValueInt) {
         rIdx += 1;
         return xToken1;
 
-      } else if (xToken1.Value == "#") {
+      }
+      else if (xToken1.Value == "#") {
         rIdx += 2;
         return ConstLabel(xToken2);
 
-      } else {
+      }
+      else {
         throw new Exception("Cannot determine reference");
       }
     }
@@ -317,72 +321,22 @@ namespace Cosmos.Compiler.XSharp {
       aAsm.Cmp(xSize, xLeft, xRight);
     }
 
-    protected string GetJump(string aComparison) {
-      return GetJump(aComparison, false);
-    }
-
-    protected string GetJump(string aComparison, bool aInvert) {
-      if (aInvert) {
-        if (aComparison == "<") {
-          aComparison = ">=";
-        } else if (aComparison == ">") {
-          aComparison = "<=";
-        } else if (aComparison == "=") {
-          aComparison = "!=";
-        } else if (aComparison == "0") {
-          // Same as JE, but implies intent in .asm better
-          aComparison = "!0";
-        } else if (aComparison == "!0") {
-          // Same as JE, but implies intent in .asm better
-          aComparison = "0";
-        } else if (aComparison == "!=") {
-          aComparison = "=";
-        } else if (aComparison == "<=") {
-          aComparison = ">";
-        } else if (aComparison == ">=") {
-          aComparison = "<";
-        } else {
-          throw new Exception("Unrecognized symbol in conditional: " + aComparison);
-        }
-      }
-
-      if (aComparison == "<") {
-        return "JB";  // unsigned
-      } else if (aComparison == ">") {
-        return "JA";  // unsigned
-      } else if (aComparison == "=") {
-        return "JE";
-      } else if (aComparison == "0") {
-        // Same as JE, but implies intent in .asm better
-        return "JZ";
-      } else if (aComparison == "!=") {
-        return "JNE";
-      } else if (aComparison == "!0") {
-        // Same as JNE, but implies intent in .asm better
-        return "JNZ";
-      } else if (aComparison == "<=") {
-        return "JBE"; // unsigned
-      } else if (aComparison == ">=") {
-        return "JAE"; // unsigned
-      } else {
-        throw new Exception("Unrecognized symbol in conditional: " + aComparison);
-      }
-    }
-
     protected void HandleIf(Assembler aAsm, TokenList aTokens, string xComparison) {
       string xLabel;
       var xLast = aTokens.Last();
       if (xLast.Value == "{") {
         mBlocks.Start(aTokens, false);
-        aAsm += GetJump(xComparison, true) + " " + BlockLabel("End");
-      } else {
+        aAsm.EmitConditionJump(xComparison, true, BlockLabel("End"));
+      }
+      else {
         if (xLast.Matches("return")) {
           xLabel = FuncLabel("Exit");
-        } else {
+        }
+        else {
           xLabel = GetLabel(xLast);
         }
 
-        aAsm += GetJump(xComparison) + " " + xLabel;
+        aAsm.EmitConditionJump(xComparison, xLabel);
       }
     }
 
@@ -393,7 +347,7 @@ namespace Cosmos.Compiler.XSharp {
         if (EmitUserComments) {
           string xValue = aTokens[0].Value;
           xValue = xValue.Replace("\"", "\\\"");
-          aAsm += "; " + xValue;
+          aAsm.EmitComment(xValue);
         }
       });
 
@@ -407,25 +361,25 @@ namespace Cosmos.Compiler.XSharp {
       // The Exit label is a special one that is used as a target for the return instruction.
       // It deserve special handling.
       AddPattern("Exit:", delegate(TokenList aTokens, Assembler aAsm) {
-        aAsm += GetLabel(aTokens[0]) + ":";
+        aAsm.EmitLabel(BlockLabel(aTokens[0]));
         mFuncExitFound = true;
       });
       // Regular label recognition.
       AddPattern("_ABC:", delegate(TokenList aTokens, Assembler aAsm) {
-        aAsm += GetLabel(aTokens[0]) + ":";
+        aAsm.EmitLabel(BlockLabel(aTokens[0]));
       });
 
       AddPattern("Call _ABC", delegate(TokenList aTokens, Assembler aAsm) {
-        aAsm += "Call " + GetLabel(aTokens[1]);
+        aAsm.Call(GetLabel(aTokens[1]));
       });
 
       AddPattern("Goto _ABC", delegate(TokenList aTokens, Assembler aAsm) {
-        aAsm += "Jmp " + GetLabel(aTokens[1]);
+        aAsm.Jump(GetLabel(aTokens[1]));
       });
 
       // Defines a constant having the given name and initial value.
       AddPattern("const _ABC = 123", delegate(TokenList aTokens, Assembler aAsm) {
-        aAsm += ConstLabel(aTokens[1]) + " equ " + aTokens[3];
+        aAsm.EmitRaw(ConstLabel(aTokens[1]) + " equ " + aTokens[3]);
       });
 
       // Declare a double word variable having the given name and initialized to 0. The
@@ -456,11 +410,14 @@ namespace Cosmos.Compiler.XSharp {
         string xSize;
         if (aTokens[2].Matches("byte")) {
           xSize = "db";
-        } else if (aTokens[2].Matches("word")) {
+        }
+        else if (aTokens[2].Matches("word")) {
           xSize = "dw";
-        } else if (aTokens[2].Matches("dword")) {
+        }
+        else if (aTokens[2].Matches("dword")) {
           xSize = "dd";
-        } else {
+        }
+        else {
           throw new Exception("Unknown size specified");
         }
         aAsm.Data.Add(GetLabel(aTokens[1]) + " TIMES " + aTokens[4].Value + " " + xSize + " 0");
@@ -470,13 +427,13 @@ namespace Cosmos.Compiler.XSharp {
         //          0         1  2   3     4
         AddPattern("while " + xCompare + " {", delegate(TokenList aTokens, Assembler aAsm) {
           mBlocks.Start(aTokens, false);
-          aAsm += BlockLabel("Begin") + ":";
+          aAsm.EmitLabel(BlockLabel("Begin"));
 
           int xIdx = 1;
           Token xComparison;
           DoCompare(aAsm, aTokens, ref xIdx, out xComparison);
 
-          aAsm += GetJump(xComparison, true) + " " + BlockLabel("End");
+          aAsm.EmitConditionJump(xComparison, true, BlockLabel("End"));
         });
       }
 
@@ -509,18 +466,18 @@ namespace Cosmos.Compiler.XSharp {
 
       AddPattern("_REG ?= 123", "Cmp {0}, {2}");
       AddPattern("_REG ?= _ABC", delegate(TokenList aTokens, Assembler aAsm) {
-        aAsm += "Cmp {0}, " + GetLabel(aTokens[2]);
+        aAsm.EmitRaw("Cmp {0}, " + GetLabel(aTokens[2]));
       });
       AddPattern("_REG ?= #_ABC", delegate(TokenList aTokens, Assembler aAsm) {
-        aAsm += "Cmp {0}, " + ConstLabel(aTokens[3]);
+        aAsm.EmitRaw("Cmp {0}, " + ConstLabel(aTokens[3]));
       });
 
       AddPattern("_REG ?& 123", "Test {0}, {2}");
       AddPattern("_REG ?& _ABC", delegate(TokenList aTokens, Assembler aAsm) {
-        aAsm += "Test {0}, " + GetLabel(aTokens[2]);
+        aAsm.EmitRaw("Test {0}, " + GetLabel(aTokens[2]));
       });
       AddPattern("_REG ?& #_ABC", delegate(TokenList aTokens, Assembler aAsm) {
-        aAsm += "Test {0}, " + ConstLabel(aTokens[3]);
+        aAsm.EmitRaw("Test {0}, " + ConstLabel(aTokens[3]));
       });
 
       AddPattern("_REG ~> 123", "ROR {0}, {2}");
@@ -533,7 +490,7 @@ namespace Cosmos.Compiler.XSharp {
       AddPattern("_REGADDR[-1] = 123", "Mov dword [{0} - {2}], {5}");
 
       AddPattern("_REG = #_ABC", delegate(TokenList aTokens, Assembler aAsm) {
-        aAsm += "Mov {0}, " + ConstLabel(aTokens[3]);
+        aAsm.EmitRaw("Mov {0}, " + ConstLabel(aTokens[3]));
       });
       AddPattern("_REGADDR[1] = #_ABC", delegate(TokenList aTokens, Assembler aAsm) {
         aAsm.Mov("dword", "[{0} + {2}]", ConstLabel(aTokens[5]));
@@ -543,7 +500,7 @@ namespace Cosmos.Compiler.XSharp {
       });
 
       AddPattern("_REG = _REG", "Mov {0}, {2}");
-      AddPattern("_REGADDR[1] = _REG",  "Mov [{0} + {2}], {5}");
+      AddPattern("_REGADDR[1] = _REG", "Mov [{0} + {2}], {5}");
       AddPattern("_REGADDR[-1] = _REG", "Mov [{0} - {2}], {5}");
       AddPattern("_REG = _REGADDR[1]", "Mov {0}, [{2} + {4}]");
       AddPattern("_REG = _REGADDR[-1]", "Mov {0}, [{2} - {5}]");
@@ -586,11 +543,11 @@ namespace Cosmos.Compiler.XSharp {
         "+#_ABC as word",
         "+#_ABC as dword"
         }, delegate(TokenList aTokens, Assembler aAsm) {
-          string xSize = "dword ";
-          if (aTokens.Count > 2) {
-            xSize = aTokens[3].Value + " ";
-          }
-          aAsm += "Push " + xSize + ConstLabel(aTokens[1]);
+        string xSize = "dword ";
+        if (aTokens.Count > 2) {
+          xSize = aTokens[3].Value + " ";
+        }
+        aAsm.EmitRaw("Push " + xSize + ConstLabel(aTokens[1]));
       });
       AddPattern("+All", "Pushad");
       AddPattern("-All", "Popad");
@@ -612,7 +569,7 @@ namespace Cosmos.Compiler.XSharp {
         "_ABC = 123 as word",
         "_ABC = 123 as dword"},
         delegate(TokenList aTokens, Assembler aAsm) {
-          aAsm += "Mov {4} [" + GetLabel(aTokens[0]) + "], {2}";
+          aAsm.EmitRaw("Mov {4} [" + GetLabel(aTokens[0]) + "], {2}");
         });
 
       // TODO: Allow asm to optimize these to Inc/Dec
@@ -632,7 +589,8 @@ namespace Cosmos.Compiler.XSharp {
       AddPattern("}", delegate(TokenList aTokens, Assembler aAsm) {
         if (mBlocks.Count == 0) {
           EndFunc(aAsm);
-        } else {
+        }
+        else {
           var xBlock = mBlocks.Current();
           var xToken1 = xBlock.StartTokens[0];
           if (xToken1.Matches("repeat")) {
@@ -641,14 +599,16 @@ namespace Cosmos.Compiler.XSharp {
               aAsm.Code.AddRange(xBlock.Contents);
             }
 
-          } else if (xToken1.Matches("while")) {
-            aAsm += "jmp " + BlockLabel("Begin");
-            aAsm += BlockLabel("End") + ":";
+          }
+          else if (xToken1.Matches("while")) {
+            aAsm.Jump(BlockLabel("Begin"));
+            aAsm.EmitLabel(BlockLabel("End"));
 
-          } else if (xToken1.Matches("if")) {
-            aAsm += BlockLabel("End") + ":";
-
-          } else {
+          }
+          else if (xToken1.Matches("if")) {
+            aAsm.EmitLabel(BlockLabel("End"));
+          }
+          else {
             throw new Exception("Unknown block starter.");
           }
           mBlocks.End();
@@ -660,7 +620,7 @@ namespace Cosmos.Compiler.XSharp {
       });
 
       AddPattern("Return", delegate(TokenList aTokens, Assembler aAsm) {
-        aAsm += "Jmp " + FuncLabel("Exit");
+        aAsm.Jump(FuncLabel("Exit"));
       });
 
       AddPattern("Repeat 4 times {", delegate(TokenList aTokens, Assembler aAsm) {
@@ -670,7 +630,7 @@ namespace Cosmos.Compiler.XSharp {
       AddPattern("Interrupt _ABC {", delegate(TokenList aTokens, Assembler aAsm) {
         StartFunc(aTokens[1].Value);
         mInIntHandler = true;
-        aAsm += GetNamespace() + "_{1}:";
+        aAsm.EmitRaw(GetNamespace() + "_{1}:");
       });
 
       // This needs to be different from return.
@@ -681,7 +641,7 @@ namespace Cosmos.Compiler.XSharp {
       AddPattern("Function _ABC {", delegate(TokenList aTokens, Assembler aAsm) {
         StartFunc(aTokens[1].Value);
         mInIntHandler = false;
-        aAsm += GetNamespace() + "_{1}:";
+        aAsm.EmitRaw(GetNamespace() + "_{1}:");
       });
 
       AddPattern("Checkpoint 'Text'", delegate(TokenList aTokens, Assembler aAsm) {
@@ -695,12 +655,12 @@ namespace Cosmos.Compiler.XSharp {
         if (xPreBootLogging) {
           UInt32 xVideo = 0xB8000;
           for (UInt32 i = xVideo; i < xVideo + 80 * 2; i = i + 2) {
-            aAsm += "mov byte [0x" + i.ToString("X") + "], 0";
-            aAsm += "mov byte [0x" + (i + 1).ToString("X") + "], 0x02";
+            aAsm.EmitRaw("mov byte [0x" + i.ToString("X") + "], 0");
+            aAsm.EmitRaw("mov byte [0x" + (i + 1).ToString("X") + "], 0x02");
           }
 
           foreach (var xChar in aTokens[1].Value) {
-            aAsm += "mov byte [0x" + xVideo.ToString("X") + "], " + (byte)xChar;
+            aAsm.EmitRaw("mov byte [0x" + xVideo.ToString("X") + "], " + (byte)xChar);
             xVideo = xVideo + 2;
           }
         }
@@ -710,33 +670,29 @@ namespace Cosmos.Compiler.XSharp {
     /// <summary>Fix issue #15660. This method escapes double quotes in the candidate string.</summary>
     /// <param name="from">The string to be sanitized.</param>
     /// <returns>The original string with escaped double quotes.</returns>
-    private static string EscapeBackQuotes(string from)
-    {
-        StringBuilder builder = new StringBuilder();
-        bool sanitized = false;
-        bool escaped = false;
-        foreach (char scannedCharacter in from)
-        {
-            switch (scannedCharacter)
-            {
-                case '\\':
-                    escaped = !escaped;
-                    break;
-                case '`':
-                    if (!escaped)
-                    {
-                        sanitized = true;
-                        builder.Append('\\');
-                    }
-                    escaped = false;
-                    break;
-                default:
-                    escaped = false;
-                    break;
+    private static string EscapeBackQuotes(string from) {
+      StringBuilder builder = new StringBuilder();
+      bool sanitized = false;
+      bool escaped = false;
+      foreach (char scannedCharacter in from) {
+        switch (scannedCharacter) {
+          case '\\':
+            escaped = !escaped;
+            break;
+          case '`':
+            if (!escaped) {
+              sanitized = true;
+              builder.Append('\\');
             }
-            builder.Append(scannedCharacter);
+            escaped = false;
+            break;
+          default:
+            escaped = false;
+            break;
         }
-        return (sanitized) ? builder.ToString() : from;
+        builder.Append(scannedCharacter);
+      }
+      return (sanitized) ? builder.ToString() : from;
     }
 
     protected Pattern FindMatch(TokenList aTokens) {
@@ -761,10 +717,12 @@ namespace Cosmos.Compiler.XSharp {
 
       var xResult = new Assembler();
       xPattern.Code(aTokens, xResult);
-      
+
       // Apply {0} etc into string
       // This happens twice for block code, but its ok because the first pass
       // strips out all tags.
+
+      // FIXME: creates a two pass compiler
       for (int i = 0; i < xResult.Code.Count; i++) {
         xResult.Code[i] = string.Format(xResult.Code[i], aTokens.ToArray());
       }
@@ -787,9 +745,10 @@ namespace Cosmos.Compiler.XSharp {
         && xLast.Matches("()")
         ) {
         // () could be handled by pattern, but best to keep in one place for future
-        xResult += "Call " + GroupLabel(aTokens[0].Value);
+        xResult.Call(GroupLabel(aTokens[0].Value));
 
-      } else {
+      }
+      else {
         // No matches
         return null;
       }
@@ -826,7 +785,7 @@ namespace Cosmos.Compiler.XSharp {
     /// </summary>
     /// <param name="aPatterns">A collection of X# lines of code. Each line of code define a
     /// pattern optionally using the pattern reserved syntax.</param>
-    /// <param name="aCode">The code transformation handler that is common abmongst all the
+    /// <param name="aCode">The code transformation handler that is common amongst all the
     /// patterns from the collection.</param>
     protected void AddPattern(string[] aPatterns, CodeFunc aCode) {
       foreach (var xPattern in aPatterns) {
@@ -838,10 +797,9 @@ namespace Cosmos.Compiler.XSharp {
     /// <param name="aPattern">A single line of X# code that define the pattern optionally using
     /// pattern reserved syntax.</param>
     /// <param name="aCode">The constant transformation result.</param>
-    protected void AddPattern(string aPattern, string aCode)
-    {
+    protected void AddPattern(string aPattern, string aCode) {
       AddPattern(aPattern, delegate(TokenList aTokens, Assembler aAsm) {
-        aAsm += aCode;
+        aAsm.EmitRaw(aCode);
       });
     }
 
@@ -851,8 +809,7 @@ namespace Cosmos.Compiler.XSharp {
     /// pattern optionally using the pattern reserved syntax.</param>
     /// <param name="aCode">The constant transformation resultthat is common abmongst all the
     /// patterns from the collection.
-    protected void AddPattern(string[] aPatterns, string aCode)
-    {
+    protected void AddPattern(string[] aPatterns, string aCode) {
       foreach (var xPattern in aPatterns) {
         AddPattern(xPattern, aCode);
       }

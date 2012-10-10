@@ -109,7 +109,7 @@ namespace Cosmos.Compiler.XSharp {
       aLine = aLine.Trim();
       if (String.IsNullOrEmpty(aLine)) {
         xAsm = new Assembler();
-        xAsm += "";
+		xAsm.EmitNewLine();
         return xAsm;
       }
 
