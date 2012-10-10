@@ -1,0 +1,109 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title></title>
+</head>
+<body>
+
+    <p>
+        Surely our security model will evolve as Cosmos evolves. However we need 
+        something simple, efficient, and with minimal impact to the users. I feel this 
+        is something most operating systems today fail greatly at.</p>
+    <p>
+        Cosmos will be divided into rings. In some senses they are similar to 
+        traditional operating system rings however they are not enforced by hardware and 
+        thus do not have the runtime overhead. Instead they are enforced by the compiler 
+        and later by the installation system which will verify assemblies are part of 
+        installation.</p>
+    <p>
+        A new assembly level attribute will be created for processing by IL2CPU. If the 
+        attribute is not present User Ring is the default.</p>
+    <p>
+        Rings from highest to lowest:</p>
+    <ul>
+        <li>User<ul>
+            <li>System<ul>
+                <li>Hardware<ul>
+                    <li>Core</li>
+                    </ul>
+                </li>
+                </ul>
+            </li>
+            </ul>
+        </li>
+    </ul>
+    <h3>
+        Ring Control</h3>
+    <p>
+        Rings can only access assemblies in the same ring, or the next lower ring.</p>
+    <p style="margin-left: 40px">
+        Core &lt;-- Hardware &lt;-- System &lt;-- User</p>
+    <p>
+        For example, System can consume classes in Hardware but not Kernel.</p>
+    <h3>
+        Core Ring</h3>
+    <p>
+        In the core ring, &quot;anything goes&quot;. This also means that code which does not 
+        require such privileges should not exist in the core ring. The core ring should 
+        be restricted to code which truly needs such unfettered access.
+    </p>
+    <p>
+        Priviliges that exist only in the core ring:</p>
+    <ul>
+        <li>Use of pointers and direct access to memory</li>
+        <li>Access to x86 IO ports.</li>
+        <li>Explicit assembly language code</li>
+        <li>Unsafe code</li>
+    </ul>
+    <p>
+        The core ring includes functionality such as:</p>
+    <ul>
+        <li>Threading</li>
+        <li>Memory management</li>
+    </ul>
+    <p>
+        Assemblies which are part of the core are restricted.</p>
+    <p>
+        The core ring exposes objects which allow the hardware ring to access memory 
+        indirectly, and in a controlled restricted fashion. For example to allow a 
+        driver to acccess video RAM, a memory object can be created by the core ring 
+        which allows access to only the specific block of memory needed by the video 
+        driver.</p>
+    <h3>
+        Hardware Ring</h3>
+    <p>
+        The hardware ring contains drivers and code for accessing hardware via more 
+        generic objects exposed by the kernel ring.</p>
+    <p>
+        The hardware ring includes functionality such as:</p>
+    <ul>
+        <li>IDE</li>
+        <li>SATA</li>
+        <li>Ethernet</li>
+        <li>USB Controller</li>
+    </ul>
+    <p>
+        The hardware ring may be further split into two levels at a later date. For 
+        example, a driver may exist for the USB Controller and it would require access 
+        to the core ring. But drivers implementing USB devices do not need to talk to 
+        hardware directly, but instead talk to the USB Controller driver.</p>
+    <h3>
+        System Ring</h3>
+    <p>
+        The system ring contains code which builds functionality on top of hardware or 
+        other system assemblies.</p>
+    <p>
+        The system ring includes functionality such as:</p>
+    <ul>
+        <li>File systems</li>
+        <li>TCP/IP</li>
+    </ul>
+    <h3>
+        User Ring</h3>
+    <p>
+        The user ring is compromised of all user code including applications and 
+        services.</p>
+
+</body>
+</html>
